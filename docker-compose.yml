@@ -1,6 +1,8 @@
 services:
   api:
-    build: ./docker/Dockerfile.api
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
     ports: ["8000:8000"]
     deploy:
       resources:
@@ -8,7 +10,9 @@ services:
           memory: 2G # API stays lean
 
   worker_math:
-    build: ./docker/Dockerfile.worker
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
     command: celery -A src.workers.tasks worker --loglevel=info -Q math_queue
     deploy:
       resources:
@@ -16,7 +20,9 @@ services:
           memory: 4G # TSFRESH needs room to breathe
 
   worker_llm:
-    build: ./docker/Dockerfile.worker
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
     command: celery -A src.workers.tasks worker --loglevel=info -Q llm_queue
     volumes: ["./models:/app/models"]
     deploy:

@@ -4,8 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Production-ready system for detecting anomalous electricity consumption patterns indicative of energy theft, combining statistical time-series analysis with Small Language Models for interpretable reporting.
-
+A production-ready ML system designed to detect anomalous electricity consumption patterns indicative of energy theft. This project bridges the gap between robust statistical time-series analysis and modern Small Language Models (SLMs) to provide highly accurate, interpretable fraud investigation reports.
 ## 🏗️ Architecture
 
 This system addresses the **critical weaknesses** of naive "text-as-input" approaches by using a **hybrid architecture**:
@@ -52,88 +51,95 @@ This system addresses the **critical weaknesses** of naive "text-as-input" appro
 └── README.md
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Docker / Reviewer Path)
+The fastest way to evaluate this system is via Docker. No local Python environment is required.
 
 ### Prerequisites
-- Python 3.10+
-- 8GB+ RAM (16GB recommended for training)
-- For edge deployment: 4GB RAM with quantized models
+- Docker and Docker Compose.
+
+- 8GB+ RAM.
+
+- Environment Variables: Zero-config required for default execution. The stack runs out-of-the-box using the defaults in docker-compose.yml.
 
 ### Installation
 
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone git@github.com:amiraghabiglou/electricity-theft-detection.git
 cd electricity-theft-detection
 
-# Install dependencies
+# 2. Start the full stack (FastAPI, Redis, Celery Workers)
+docker-compose up -d --build
+
+# 3. Verify the API is running
+curl http://localhost:8000/health
+```
+### 💻 Local Development (Developer Path)
+For MLOps engineers and contributors, this project strictly manages dependencies via [Poetry](https://python-poetry.org/).
+
+#### Hardware Requirements
+- Minimum (Inference): 8GB RAM, 4 CPU cores, 10GB free disk space. Sufficient for running inference with Q4_K_M quantized models.
+
+- Recommended (Training): 16GB+ RAM, 8+ CPU cores. Training the Isolation Forest/XGBoost ensemble and extracting TSFRESH features on the full SGCC dataset requires significant memory overhead.
+
+### Environment Setup
+(Note: No .env configuration is required for local execution unless overriding default Redis or FastAPI ports).
+```bash
+# Install Poetry dependencies
 poetry install
 
-# Download SGCC dataset (manual download from Kaggle required due to licensing)
-# Place in data/raw/sgcc.csv
+# Optional: Export to standard requirements.txt for pip users
+poetry export -f requirements.txt --output requirements.txt --without-hashes
+```
+### Running Tests
+To verify system integrity and logic before deployment or committing changes:
+```bash 
+# Execute all unit and integration tests
+poetry run pytest tests/ -v
+```
+# 📊 Dataset Acquisition
+Due to licensing, the SGCC (State Grid Corporation of China) dataset must be downloaded manually.
 
-# Download quantized SLM (automatic)
-poetry run python scripts/download_quantized_model.py --model phi-3-mini
+Download the dataset from Kaggle: [SGCC Dataset (bensalem14)](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
+
+Extract and place the sgcc.csv file into the designated raw data directory:
+```bash
+mkdir -p data/raw
+mv path/to/downloaded/sgcc.csv data/raw/
 ```
 
-### Training
+# ⚙️ Execution Pipeline
+### 1. Training & Quantization
 
 ```bash
-# Full pipeline: Data → Features → Model → Quantization
-poetry run python scripts/train_models.py \
-  --config config/pipeline_config.yaml \
-  --output models/
+# Execute the full pipeline: Data Ingestion → Feature Extraction → Model Training
+poetry run python scripts/train_models.py --config config/pipeline_config.yaml --output models/
 
-# Or step-by-step
-poetry run python -m src.pipeline.data_pipeline --extract-tsfresh
-poetry run python scripts/train_models.py --train-hybrid
-poetry run python scripts/quantize_llm.py
+# Download and quantize the SLM for edge-optimized reporting
+poetry run python scripts/quantize_llm.py --model phi-3-mini
 ```
-### Inference
+### 2. Manual Inference Stack
 
 ```bash
-# Start the full stack (API + Redis + Workers)
-docker-compose up -d
-
-# Or manually
 redis-server &
 celery -A src.workers.tasks worker --loglevel=info -Q math_queue,llm_queue &
 uvicorn src.api.main:app --port 8000
 ```
 
-# 📊 Dataset
+# 🛠️ Production & MLOps Features
+- **Data Drift Monitoring:** Implements Population Stability Index (PSI) and KS-tests to detect seasonal distribution shifts, triggering alerts if PSI > 0.2.
 
-### SGCC (State Grid Corporation of China) 
-- 42,372 consumers
-- 1,035 days of daily consumption (01/01/2014 - 10/30/2016)
-- Binary labels for malicious activities
-- Challenge: Highly imbalanced (~10% fraud), missing values, long time-series
-### 🔍 Key Features
-1. Production-Grade Feature Engineering
-- TSFRESH extracts 700+ features: autocorrelation, entropy, trend, seasonality
-- Domain features: Zero-consumption streaks, sudden drop detection, weekend/weekday pattern disruption
-- Missing value handling: Forward-fill → Backward-fill → Zero imputation per consumer
-2. Hybrid Detection
-- Isolation Forest: Catches novel theft patterns (unsupervised)
-- XGBoost: High-precision classification with class imbalance handling (SMOTETomek)
-- SHAP explainability: Feature importance for every prediction
-3. Edge-Optimized SLM
-- 4-bit GGUF quantization: Phi-3-mini runs on 4GB RAM
-- Structured prompts: No token inflation from raw time-series text
-- Template fallback: Graceful degradation if LLM unavailable
-4. MLOps & Monitoring
-- Drift Detection: PSI + KS-test for seasonal changes, infrastructure updates
-- CI/CD: GitHub Actions with automated retraining triggers
-- Containerized: Docker images for API and training pipelines
-5. Monitoring Dashboard
-- Metrics: Tracked via Prometheus/Grafana.
-- Alerting: Slack/Email triggers when PSI > 0.2.
+- **Edge-Optimized:** 4-bit GGUF quantization allows the Phi-3-mini reasoning engine to run efficiently on 4GB RAM edge devices.
 
-# 🛠️ Configuration
-Edit config/pipeline_config.yaml:
+- **Explainability (XAI):** Integrated SHAP values for every prediction, ensuring field inspection teams understand the why behind a fraud alert.
+
+- **Automated CI/CD:** GitHub Actions workflow enforces unit/integration testing, drift evaluation, and container builds on every push.
+
+# 🎛️ Configuration
+System parameters are decoupled from the codebase in config/pipeline_config.yaml:
 ```bash
 feature_extraction:
-  tsfresh_settings: "EfficientFCParameters"  # or "ComprehensiveFCParameters"
+  tsfresh_settings: "EfficientFCParameters"
   n_jobs: 4
   
 detection:
@@ -143,32 +149,14 @@ detection:
   xgboost:
     max_depth: 6
     learning_rate: 0.05
-    scale_pos_weight: 10  # For class imbalance
+    scale_pos_weight: 10
 
 llm:
   model: "phi-3-mini-4k-instruct"
-  quantization: "Q4_K_M"  # 4-bit quantization
+  quantization: "Q4_K_M"
   max_tokens: 256
-  temperature: 0.3  # Low for factual reports
-
-monitoring:
-  psi_threshold: 0.2  # Alert if >0.2
-  check_frequency: "daily"
 ```
 
-# 🐳 Deployment
-Docker (Recommended)
-```bash
-# Build images
-docker build -f docker/Dockerfile.api -t theft-detection-api .
-docker build -f docker/Dockerfile.training -t theft-detection-training .
-
-# Run API
-docker run -p 8000:8000 \
-  -v $(pwd)/models:/app/models \
-  -e MODEL_PATH=/app/models/hybrid_detector.joblib \
-  theft-detection-api
-```  
 # Kubernetes
 ```bsah
 kubectl apply -f k8s/namespace.yaml
