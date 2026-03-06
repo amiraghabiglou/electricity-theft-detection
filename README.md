@@ -80,7 +80,7 @@ Due to licensing, the SGCC (State Grid Corporation of China) dataset must be dow
 
 Download the dataset from Kaggle: [SGCC Dataset](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
 
-Extract and place the sgcc.csv file into the designated raw data directory:
+Extract, rename (manually data set.csv to sgcc.csv) and place the sgcc.csv file into the designated raw data directory:
 ```bash
 mv path/to/downloaded/sgcc.csv data/raw/
 ```
