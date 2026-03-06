@@ -35,10 +35,7 @@ def run_data_pipeline(input_path: str, output_path: str, extract_tsfresh: bool =
 
     df_raw = pd.read_csv(input_path)
     logger.info("Standardizing raw dataset columns...")
-    df_raw = df_raw.rename(columns={
-        "CONS_NO": "consumer_id",
-        "FLAG": "label"
-    })
+    df_raw = df_raw.rename(columns={"CONS_NO": "consumer_id", "FLAG": "label"})
     logger.info(f"Loaded data with shape: {df_raw.shape}")
 
     # 2. Initialize Extractor
