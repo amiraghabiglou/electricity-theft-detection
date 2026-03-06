@@ -138,6 +138,29 @@ jobs:
         pip install poetry
         poetry install --only main
 
+    - name: Generate Dummy Data for Testing
+      run: |
+        mkdir -p data/drift_reference data/production reports
+        poetry run python -c "
+        import pandas as pd
+        import numpy as np
+        
+        # 1. Generate Reference data (Normal baseline)
+        ref = pd.DataFrame({
+            'domain__zero_consumption_ratio': np.random.normal(0.1, 0.05, 1000),
+            'value__standard_deviation': np.random.normal(5, 1, 1000)
+        })
+        ref.to_parquet('data/drift_reference/baseline.parquet')
+        
+        # 2. Generate Current data (Intentionally Drifted)
+        # We shift the mean significantly to guarantee the monitor fails and triggers Slack
+        curr = pd.DataFrame({
+            'domain__zero_consumption_ratio': np.random.normal(0.6, 0.1, 1000),
+            'value__standard_deviation': np.random.normal(12, 3, 1000)
+        })
+        curr.to_parquet('data/production/current_features.parquet')
+        "    
+
     - name: Run Drift Detection
       run: |
         poetry run python scripts/monitor_drift.py \
