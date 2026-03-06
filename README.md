@@ -62,16 +62,51 @@ The fastest way to evaluate this system is via Docker. No local Python environme
 - Environment Variables: Zero-config required for default execution. The stack runs out-of-the-box using the defaults in docker-compose.yml.
 
 ### Installation
-
-```bash
-# 1. Clone the repository
+1. Clone the repository
+```bash 
 git clone git@github.com:amiraghabiglou/electricity-theft-detection.git
 cd electricity-theft-detection
+```
+2. Install dependencies (Required for local execution)
+```bash 
+poetry install
+```
+3. Create necessary directories
+```bash 
+mkdir -p models data/raw data/processed
+```
+4. 📊 Dataset Acquisition
+Due to licensing, the SGCC (State Grid Corporation of China) dataset must be downloaded manually.
 
-# 2. Start the full stack (FastAPI, Redis, Celery Workers)
+Download the dataset from Kaggle: [SGCC Dataset (bensalem14)](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
+
+Extract and place the sgcc.csv file into the designated raw data directory:
+```bash
+mv path/to/downloaded/sgcc.csv data/raw/
+```
+5. Process the data (Ensure sgcc.csv is in data/raw/ as per the Dataset guide)
+```bash
+poetry run python -m src.pipeline.data_pipeline --input data/raw/sgcc.csv --output data/processed/features.parquet
+```
+6. Run the training script to generate hybrid_detector.joblib
+```bash
+poetry run python scripts/train_models.py \
+    --features data/processed/features.parquet \
+    --model-output models/hybrid_detector.joblib \
+    --metrics-output models/metrics.json
+```
+7. Generate the dummy SLM artifact
+```bash
+poetry run python scripts/quantize_llm.py \
+    --base-model microsoft/Phi-3-mini-4k-instruct \
+    --output models/phi-3-q4.gguf
+```
+8. Now build the stack
+```bash
 docker-compose up -d --build
-
-# 3. Verify the API is running
+```
+9. Verify the API is running
+```bash
 curl http://localhost:8000/health
 ```
 ### 💻 Local Development (Developer Path)
@@ -97,17 +132,6 @@ To verify system integrity and logic before deployment or committing changes:
 # Execute all unit and integration tests
 poetry run pytest tests/ -v
 ```
-# 📊 Dataset Acquisition
-Due to licensing, the SGCC (State Grid Corporation of China) dataset must be downloaded manually.
-
-Download the dataset from Kaggle: [SGCC Dataset (bensalem14)](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
-
-Extract and place the sgcc.csv file into the designated raw data directory:
-```bash
-mkdir -p data/raw
-mv path/to/downloaded/sgcc.csv data/raw/
-```
-
 # ⚙️ Execution Pipeline
 ### 1. Training & Quantization
 
