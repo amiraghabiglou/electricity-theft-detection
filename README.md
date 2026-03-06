@@ -78,7 +78,7 @@ mkdir -p models data/raw data/processed
 4. 📊 Dataset Acquisition
 Due to licensing, the SGCC (State Grid Corporation of China) dataset must be downloaded manually.
 
-Download the dataset from Kaggle: [SGCC Dataset (bensalem14)](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
+Download the dataset from Kaggle: [SGCC Dataset](https://www.kaggle.com/datasets/bensalem14/sgcc-dataset)
 
 Extract and place the sgcc.csv file into the designated raw data directory:
 ```bash
