@@ -59,3 +59,17 @@ services:
       resources:
         limits:
           memory: 6G # SLM gets its own dedicated RAM slice
+
+  ui:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: streamlit run src/ui/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 1G

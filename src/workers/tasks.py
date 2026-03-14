@@ -28,11 +28,13 @@ def process_theft_analysis(self, consumer_data_batch):
     for consumer in consumer_data_batch:
         c_id = consumer["consumer_id"]
         for time_step, val in enumerate(consumer["consumption_data"]):
-            rows.append({
-                "id": c_id,  # ❌ Changed from "consumer_id" to "id"
-                "time": time_step,
-                "value": float(val)
-            })
+            rows.append(
+                {
+                    "id": c_id,  # ❌ Changed from "consumer_id" to "id"
+                    "time": time_step,
+                    "value": float(val),
+                }
+            )
 
     df_long = pd.DataFrame(rows)
 
@@ -41,9 +43,9 @@ def process_theft_analysis(self, consumer_data_batch):
 
     df_raw = pd.DataFrame(consumer_data_batch)
 
-    consumption_df = pd.DataFrame(df_raw['consumption_data'].tolist())
+    consumption_df = pd.DataFrame(df_raw["consumption_data"].tolist())
 
-    df_raw_wide = pd.concat([df_raw[['consumer_id']], consumption_df], axis=1)
+    df_raw_wide = pd.concat([df_raw[["consumer_id"]], consumption_df], axis=1)
 
     final_features = extractor.add_domain_features(features, df_raw_wide)
     # ---------------------------
