@@ -1,0 +1,21 @@
+# Local Datasets
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# AI Models & Checkpoints
+models/*
+!models/.gitkeep
+
+# Python Environments & Cache
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# IDEs and OS Files
+.DS_Store
+.vscode/
+.idea/

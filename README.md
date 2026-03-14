@@ -11,10 +11,10 @@ This system addresses the **critical weaknesses** of naive "text-as-input" appro
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| **Feature Extraction** | TSFRESH | Extracts 700+ statistical features (trend, seasonality, entropy) |
-| **Anomaly Detection** | Isolation Forest | Unsupervised scoring for novel theft patterns |
-| **Classification** | XGBoost | High-precision fraud detection with IF features as input |
-| **Reasoning Engine** | Phi-3/Llama-3-8B (4-bit GGUF) | Natural language investigation reports from structured outputs |
+| **Feature Extraction** | TSFRESH | Extracts statistical features (trend, variance, entropy) from raw time-series matrices. |
+| **Anomaly Detection** | XGBoost | High-precision fraud detection relying on mathematically shaped data. |
+| **Message Broker** | Redis & Celery | Decouples heavy mathematical/LLM workloads from the API to maintain responsiveness. |
+| **Reasoning Engine** | Phi-3 (4-bit GGUF) | Generates natural language investigation reports based strictly on XGBoost/SHAP outputs. |
 
 **Why this architecture?**
 - ❌ **Avoids**: Token inflation from "Day 1: 12kWh..." textification (inefficient, lossy)
@@ -52,14 +52,14 @@ This system addresses the **critical weaknesses** of naive "text-as-input" appro
 ```
 
 ## 🚀 Quick Start (Docker / Reviewer Path)
-The fastest way to evaluate this system is via Docker. No local Python environment is required.
+The fastest way to evaluate this system is via Docker. The stack runs out-of-the-box using the defaults in `docker-compose.yml`.
 
 ### Prerequisites
 - Docker and Docker Compose.
 
 - 8GB+ RAM.
 
-- Environment Variables: Zero-config required for default execution. The stack runs out-of-the-box using the defaults in docker-compose.yml.
+- Python 3.10+ and Poetry (for local data prep)
 
 ### Installation
 1. Clone the repository
@@ -85,30 +85,66 @@ Extract, rename (manually data set.csv to sgcc.csv) and place the sgcc.csv file 
 mv path/to/downloaded/sgcc.csv data/raw/
 ```
 5. Process the data (Ensure sgcc.csv is in data/raw/ as per the Dataset guide)
+
+**Note:** To train the full production model, omit the --sample flag
 ```bash
-poetry run python -m src.pipeline.data_pipeline --input data/raw/sgcc.csv --output data/processed/features.parquet
+poetry run python -m src.pipeline.data_pipeline --input data/raw/sgcc.csv --output data/processed/features.parquet --sample 1000
 ```
-6. Run the training script to generate hybrid_detector.joblib
+6. Train the mathematical anomaly detection model and generate hybrid_detector.joblib:
 ```bash
 poetry run python scripts/train_models.py \
     --features data/processed/features.parquet \
     --model-output models/hybrid_detector.joblib \
     --metrics-output models/metrics.json
 ```
-7. Generate the dummy SLM artifact
-```bash
-poetry run python scripts/quantize_llm.py \
-    --base-model microsoft/Phi-3-mini-4k-instruct \
-    --output models/phi-3-q4.gguf
+7. Download the Reasoning Engine (SLM)
+You must download the actual binary weights for the Generative AI model. We use a 4-bit quantized version of Microsoft's Phi-3 (~2.4GB).
+```bash 
+curl -L -o models/phi-3-q4.gguf [https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf)
 ```
-8. Now build the stack
+(Verify the download is ~2.4GB using ls -lh models/. If it is 1KB, the download failed).
+
+8. Boot the Infrastructure
 ```bash
 docker-compose up -d --build
 ```
-9. Verify the API is running
+10. Verify the API is running
 ```bash
 curl http://localhost:8000/health
 ```
+
+# ⚡ How to Use the API
+Because the ML pipeline is computationally heavy, the API is entirely asynchronous.
+
+**Step 1:** Submit a Fraud Detection Job
+Send a POST request with the raw daily consumption data. Notice the sudden drop to 0.0 in the data below, simulating a meter bypass.
+
+```bash
+curl -X POST "http://localhost:8000/detect" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "consumers": [
+             {
+               "consumer_id": "THEFT_999",
+               "consumption_data": [6.1, 6.3, 5.9, 6.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+             }
+           ]
+         }'
+```
+**Response:** You will receive a 202 Accepted status with a job_id:
+```bash
+{"job_id":"<YOUR_JOB_ID>","status":"Processing"}
+```
+
+**Step 2:** Retrieve the Results & LLM Report
+Wait 10-30 seconds for the math and LLM workers to process the queue, then poll the results endpoint using your specific job_id:
+
+```bash
+curl http://localhost:8000/results/<YOUR_JOB_ID>
+```
+**Response:** If fraud is detected, the JSON will include the mathematical SHAP explanations alongside a generated natural language report from the Phi-3 model.
+
+💡 UI Tip: You can also test these endpoints interactively directly in your browser by navigating to the Swagger UI: http://localhost:8000/docs
 ### 💻 Local Development (Developer Path)
 For MLOps engineers and contributors, this project strictly manages dependencies via [Poetry](https://python-poetry.org/).
 

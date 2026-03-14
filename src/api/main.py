@@ -18,7 +18,7 @@ async def detect_theft(request: DetectionRequest):
     Submits a batch for analysis. Returns a job_id for polling.
     """
     data = request.model_dump() if hasattr(request, "model_dump") else request.dict()
-    job = process_theft_analysis.delay(data["consumers"])
+    job = process_theft_analysis.apply_async(args=[data["consumers"]], queue="math_queue")
     return {"job_id": job.id, "status": "Processing"}
 
 
