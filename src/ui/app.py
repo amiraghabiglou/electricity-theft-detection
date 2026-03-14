@@ -1,8 +1,8 @@
-import streamlit as st
-import requests
 import time
+
 import pandas as pd
-import json
+import requests
+import streamlit as st
 
 # Configuration
 API_URL = "http://api:8000"  # Uses Docker internal network name

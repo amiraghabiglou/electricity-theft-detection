@@ -6,6 +6,7 @@ import argparse
 import logging
 import multiprocessing
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -24,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 def run_data_pipeline(
-    input_path: str, output_path: str, extract_tsfresh: bool = True, sample_size: int = None
+    input_path: str,
+    output_path: str,
+    extract_tsfresh: bool = True,
+    sample_size: Optional[int] = None,
 ):
     """
     Executes the data processing pipeline.

@@ -1,13 +1,12 @@
-# src/workers/tasks.py
-from dataclasses import asdict
 import os
+from dataclasses import asdict
+
 import pandas as pd
 from celery import Celery
 
 from src.features.extractors import ElectricityFeatureExtractor
 from src.llm.report_generator import TheftReportGenerator
 from src.models.ensemble import HybridTheftDetector
-
 
 broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
@@ -59,7 +58,6 @@ def process_theft_analysis(self, consumer_data_batch):
     for res in results:
         report = None
 
-        # RESTORE TO PRODUCTION THRESHOLD
         if res.fraud_probability > 0.6:
             try:
                 report_gen = TheftReportGenerator(model_path="models/phi-3-q4.gguf")
@@ -68,3 +66,4 @@ def process_theft_analysis(self, consumer_data_batch):
                 report = f"Fraud detected, but LLM failed to load: {str(e)}"
 
         final_output.append({**asdict(res), "report": report})
+    return final_output

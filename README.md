@@ -114,7 +114,21 @@ curl http://localhost:8000/health
 ```
 
 # ⚡ How to Use the API
-Because the ML pipeline is computationally heavy, the API is entirely asynchronous.
+Because the ML pipeline involves heavy statistical extraction and LLM inference, 
+the system operates asynchronously. You have two ways to interact with it:
+
+### Option A: Professional Dashboard (Recommended)
+The most intuitive way to explore the system is through the built-in Streamlit dashboard.
+
+1.  Open your browser to: **`http://localhost:8501`**
+2.  Enter a **Consumer ID** and a list of daily consumption values.
+3.  Click **Run Analysis**. 
+4.  The UI will automatically visualize your data, poll the backend, and display the metrics and the AI-generated report once ready.
+
+---
+
+### Option B: Command Line (API Path)
+For developers looking to integrate this into other services, use the REST API.
 
 **Step 1:** Submit a Fraud Detection Job
 Send a POST request with the raw daily consumption data. Notice the sudden drop to 0.0 in the data below, simulating a meter bypass.
