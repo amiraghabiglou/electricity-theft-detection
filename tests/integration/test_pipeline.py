@@ -21,7 +21,6 @@ def sample_payload():
 # @patch("src.api.main.process_theft_analysis.delay")
 def test_async_detection_submission(sample_payload):
     """Test that the API correctly hands off tasks to the worker queue."""
-    # We no longer need to mock the return value to a specific string
     response = client.post("/detect", json=sample_payload)
 
     assert response.status_code == 202
@@ -31,7 +30,7 @@ def test_async_detection_submission(sample_payload):
     # Validate that job_id is not None
     assert job_id is not None
 
-    # Validate that job_id is a valid UUID (this is the professional way)
+    # Validate that job_id is a valid UUID
     try:
         uuid.UUID(str(job_id))
     except ValueError:
