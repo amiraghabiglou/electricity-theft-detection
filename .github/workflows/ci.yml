@@ -17,58 +17,67 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: ${{ env.POETRY_VERSION }}
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
 
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pypoetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
-    - name: Install dependencies
-      run: |
+      - name: Install dependencies
+        run: |
           poetry install --with dev,test
 
-    - name: Download quantized SLM for testing
-      run: |
-        if [ -f "scripts/download_quantized_model.py" ]; then
-          poetry run python scripts/download_quantized_model.py --model phi-3-mini
-        else
-          echo "Error: scripts/download_quantized_model.py not found!"
-          ls -R  
-          exit 1
-        fi
+      - name: Prepare Models for Testing
+        run: |
+          mkdir -p models
+          # Use the validated direct download instead of the potentially broken script
+          curl -L -o models/phi-3-q4.gguf https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf
 
-    - name: Run linting
-      run: |
-        poetry run black --check src tests
-        poetry run isort --check-only src tests
-        poetry run flake8 src tests
-        poetry run mypy src 
+      - name: Run linting
+        run: |
+          poetry run black --check src tests
+          poetry run isort --check-only src tests
+          poetry run flake8 src tests
+          poetry run mypy src 
 
-    - name: Run unit tests
-      run: |
-        poetry run python -m pytest tests/unit -v --cov=src --cov-report=xml
+      - name: Run unit tests
+        run: |
+          poetry run python -m pytest tests/unit -v --cov=src --cov-report=xml
 
-    - name: Run integration tests
-      run: |
-        poetry run pytest tests/integration -v --cov-append
+      - name: Run integration tests
+        env:
+          CELERY_BROKER_URL: redis://localhost:6379/0
+          CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        run: |
+          poetry run pytest tests/integration -v --cov-append
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
 
   train-model:
     needs: test
