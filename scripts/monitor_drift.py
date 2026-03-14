@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+
 from src.monitoring.drift_detector import ElectricityDriftMonitor
 
 logging.basicConfig(level=logging.INFO)
