@@ -37,10 +37,10 @@ def run_drift_check(reference_path: str, current_path: str, output_path: str):
     report_dicts = [
         {
             "feature_name": r.feature_name,
-            "drift_detected": r.drift_detected,
-            "statistic": r.statistic,
-            "p_value": r.p_value,
-            "percent_change": r.percent_change,
+            "drift_detected": bool(r.drift_detected),
+            "statistic": float(r.statistic),
+            "p_value": float(r.p_value),
+            "percent_change": float(r.percent_change),
         }
         for r in reports
     ]
