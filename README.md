@@ -159,46 +159,6 @@ curl http://localhost:8000/results/<YOUR_JOB_ID>
 **Response:** If fraud is detected, the JSON will include the mathematical SHAP explanations alongside a generated natural language report from the Phi-3 model.
 
 💡 UI Tip: You can also test these endpoints interactively directly in your browser by navigating to the Swagger UI: http://localhost:8000/docs
-### 💻 Local Development (Developer Path)
-For MLOps engineers and contributors, this project strictly manages dependencies via [Poetry](https://python-poetry.org/).
-
-#### Hardware Requirements
-- Minimum (Inference): 8GB RAM, 4 CPU cores, 10GB free disk space. Sufficient for running inference with Q4_K_M quantized models.
-
-- Recommended (Training): 16GB+ RAM, 8+ CPU cores. Training the Isolation Forest/XGBoost ensemble and extracting TSFRESH features on the full SGCC dataset requires significant memory overhead.
-
-### Environment Setup
-(Note: No .env configuration is required for local execution unless overriding default Redis or FastAPI ports).
-```bash
-# Install Poetry dependencies
-poetry install
-
-# Optional: Export to standard requirements.txt for pip users
-poetry export -f requirements.txt --output requirements.txt --without-hashes
-```
-### Running Tests
-To verify system integrity and logic before deployment or committing changes:
-```bash 
-# Execute all unit and integration tests
-poetry run pytest tests/ -v
-```
-# ⚙️ Execution Pipeline
-### 1. Training & Quantization
-
-```bash
-# Execute the full pipeline: Data Ingestion → Feature Extraction → Model Training
-poetry run python scripts/train_models.py --config config/pipeline_config.yaml --output models/
-
-# Download and quantize the SLM for edge-optimized reporting
-poetry run python scripts/quantize_llm.py --model phi-3-mini
-```
-### 2. Manual Inference Stack
-
-```bash
-redis-server &
-celery -A src.workers.tasks worker --loglevel=info -Q math_queue,llm_queue &
-uvicorn src.api.main:app --port 8000
-```
 
 # 🛠️ Production & MLOps Features
 - **Data Drift Monitoring:** Implements Population Stability Index (PSI) and KS-tests to detect seasonal distribution shifts, triggering alerts if PSI > 0.2.
@@ -209,6 +169,19 @@ uvicorn src.api.main:app --port 8000
 
 - **Automated CI/CD:** GitHub Actions workflow enforces unit/integration testing, drift evaluation, and container builds on every push.
 
+# 📈 MLOps & Monitoring
+### Data Drift Monitoring
+The system includes an automated drift detection suite to ensure model reliability over time.
+
+To check for seasonal or behavioral shifts in electricity consumption:
+```bash
+poetry run python scripts/monitor_drift.py \
+    --reference data/drift_reference/ \
+    --current data/production/current_features.parquet \
+    --output reports/drift_report.json
+```
+**Note:** If significant drift is detected (PSI > 0.2 or KS-test p < 0.05), the script will exit with Status 
+Code 1. In a CI/CD context, this will safely "fail" the build, preventing a stale model from being used in production.
 # 🎛️ Configuration
 System parameters are decoupled from the codebase in config/pipeline_config.yaml:
 ```bash

@@ -1,5 +1,7 @@
 # Local Datasets
 data/raw/*
+data/drift_reference/*
+data/production/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
@@ -7,6 +9,8 @@ data/processed/*
 # AI Models & Checkpoints
 models/*
 !models/.gitkeep
+
+reports/*
 
 # Python Environments & Cache
 __pycache__/
