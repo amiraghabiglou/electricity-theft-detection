@@ -1,34 +1,32 @@
 # Dockerfile.training
 FROM python:3.10-slim
 
+WORKDIR /app
+
+# 1. Unified apt-get installation including pkg-config.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     git \
-    libopenblas-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install poetry
-
-WORKDIR /app
-COPY pyproject.toml poetry.lock ./
-
-RUN poetry config virtualenvs.create false
-
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
     pkg-config \
     libopenblas-dev \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
-# BuildKit cache mount to prevent redundant compilation
+# 2. Add virtualenv to the core pip packages
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel virtualenv \
+    && pip install poetry
+
+COPY pyproject.toml poetry.lock* ./
+
+# 3. Use ENV for poetry configuration to ensure it persists across all subsequent layers
+ENV POETRY_VIRTUALENVS_CREATE=false
+
+# 4. Install numpy and pre-compile llama-cpp-python using the BuildKit cache
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install "numpy==1.26.4" \
-    && CMAKE_ARGS="-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS" pip install "llama-cpp-python==0.2.56"
+    && CMAKE_ARGS="-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS" pip install "llama-cpp-python==0.2.90"
 
+# 5. Install the rest of the dependencies via poetry
 RUN poetry install --no-interaction --no-ansi --no-root
 
 COPY src/ ./src/
